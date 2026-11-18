@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : true }));
+app.use(cors({ origin: true }));
 app.use(express.json());
 
 const fail = (status, message) => Object.assign(new Error(message), { status });

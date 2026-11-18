@@ -5,7 +5,7 @@ A community micro-investment platform. Small investors pool money from 10,000 RW
 ## Structure
 
 - `frontend/` React and Vite web app
-- `backend/` Node.js and Express API, deployable on Vercel
+- `backend/` Express API code, served by `api/index.js` as a Vercel function
 - `supabase/schema.sql` database tables and Row Level Security
 
 ## What works
@@ -14,23 +14,15 @@ Google sign-in, roles (investor, rider, admin), profiles, funding campaigns with
 
 ## Run locally
 
-1. In Supabase, open the SQL Editor and run `supabase/schema.sql`.
-2. In Supabase, enable Google under Authentication, Providers.
-3. Backend: `cd backend`, copy `.env.example` to `.env`, fill it in, then `npm install` and `npm run dev`.
-4. Frontend: `cd frontend`, copy `.env.example` to `.env.local`, fill it in, then `npm install` and `npm run dev`.
-5. Open http://localhost:5173 and sign in.
-6. Make yourself admin by running the update statement at the bottom of `schema.sql` with your email.
-
-The service role key is secret. Use it only in the backend.
+1. In Supabase, run `supabase/schema.sql` in the SQL Editor and enable Google under Authentication, Providers.
+2. Copy `.env.example` to `.env` and fill it in.
+3. Run `npm install`, then `npm --prefix frontend install`.
+4. In two terminals run `npm run dev:api` and `npm run dev:web`, then open http://localhost:5173.
+5. Make yourself admin with the update statement at the bottom of `schema.sql`.
 
 ## Deploy on Vercel
 
-Create two Vercel projects from this repository.
-
-- Backend: root directory `backend`. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `FRONTEND_URL` (your frontend URL).
-- Frontend: root directory `frontend`. Add `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_API_URL` (your backend URL plus `/api`).
-- In Supabase, Authentication, URL Configuration: set Site URL to the frontend URL and add it to Redirect URLs.
-- In Google Cloud, the redirect URI stays `https://YOUR-PROJECT-REF.supabase.co/auth/v1/callback`.
+Import the repository as one project and add the four variables from `.env.example`. Vercel builds the frontend and serves the API from the same address, so nothing else is needed. In Supabase, Authentication, URL Configuration, set Site URL to your Vercel address.
 
 ## Demo walkthrough
 
