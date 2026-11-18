@@ -46,7 +46,7 @@ export default function Campaigns({ profile, notify, onSignIn }) {
         </div>
       </div>
 
-      <div className="grid">
+      <div className="grid campaigns-grid-3">
         {items.map((c, i) => {
           const pct = Math.min(100, Math.round((c.raised / c.target) * 100));
           const remaining = Math.max(0, c.target - c.raised);

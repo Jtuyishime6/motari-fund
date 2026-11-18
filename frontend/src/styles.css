@@ -923,6 +923,12 @@ button, input, select { font: inherit; color: inherit; }
   gap: 24px;
 }
 
+@media (min-width: 960px) {
+  .campaigns-grid-3 {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--border);
