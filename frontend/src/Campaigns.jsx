@@ -20,7 +20,7 @@ export default function Campaigns({ profile, notify, onSignIn }) {
       await api('/pledges', { method: 'POST', body: { campaign_id: pick.id, ...f } });
       setPick(null);
       setF({ amount: '25000', momo_ref: '' });
-      notify('Pledge sent. An admin will confirm your payment.');
+      notify('Pledge submitted.');
       load();
     } catch (x) {
       setErr(x.message);
@@ -30,19 +30,16 @@ export default function Campaigns({ profile, notify, onSignIn }) {
 
   const presets = [10000, 25000, 50000, 100000];
 
-  if (!items) return <Skeletons />;
-  if (!items.length) return <Empty icon="bolt" text="No e-motos need funding yet. Check back soon." />;
+  if (!items) return <Skeletons n={3} />;
+  if (!items.length) return <Empty icon="bolt" text="No e-motos available." />;
 
   return (
     <section id="campaigns-section" className="section" style={{ marginTop: 0 }}>
       <div className="section-head">
-        <div>
-          <h2>Available E-Motos for Funding</h2>
-          <p className="muted">Select a verified electric moto-taxi to back and track its lease progress.</p>
-        </div>
+        <h2>Available E-Motos for Funding</h2>
         <div className="tag-count">
-          <Icon n="bolt" size={18} />
-          <span>{items.length} Campaigns</span>
+          <Icon n="bolt" size={16} />
+          <span>{items.length} Vehicles</span>
         </div>
       </div>
 
@@ -57,7 +54,7 @@ export default function Campaigns({ profile, notify, onSignIn }) {
                 {c.photo_url ? (
                   <img src={c.photo_url} alt={c.model} className="moto-img" loading="lazy" />
                 ) : (
-                  <div className="moto-placeholder"><Icon n="bolt" size={40} /></div>
+                  <div className="moto-placeholder"><Icon n="bolt" size={36} /></div>
                 )}
                 <div className="moto-overlay">
                   <Pill s={c.status} />
@@ -67,8 +64,8 @@ export default function Campaigns({ profile, notify, onSignIn }) {
 
               <div className="moto-body">
                 <div className="moto-meta">
-                  <span className="location-tag"><Icon n="map-point" size={14} /> Kigali · Gasabo</span>
-                  <span className="eco-tag"><Icon n="leaf" size={14} /> 100% Electric</span>
+                  <span className="location-tag"><Icon n="map-point" size={13} /> Kigali · Gasabo</span>
+                  <span className="eco-tag"><Icon n="leaf" size={13} /> Electric</span>
                 </div>
 
                 <h3 className="moto-title">{c.model}</h3>
@@ -85,7 +82,7 @@ export default function Campaigns({ profile, notify, onSignIn }) {
 
                 <div className="moto-footer">
                   <span className="muted small-text">
-                    {c.status === 'funded' ? 'Fully Funded' : `${rwf(remaining)} still needed`}
+                    {c.status === 'funded' ? 'Fully Funded' : `${rwf(remaining)} needed`}
                   </span>
 
                   {c.status === 'open' && (
@@ -109,11 +106,11 @@ export default function Campaigns({ profile, notify, onSignIn }) {
       {pick && (
         <Modal title={`Pledge to ${pick.model}`} onClose={() => setPick(null)}>
           <div className="pledge-modal-meta">
-            <div className="row" style={{ gap: 12 }}>
+            <div className="row" style={{ gap: 12, alignItems: 'center' }}>
               {pick.photo_url && <img src={pick.photo_url} alt="" className="modal-mini-thumb" />}
               <div>
                 <strong>{pick.model}</strong>
-                <p className="muted small-text">Still needed: {rwf(Math.max(0, pick.target - pick.raised))}</p>
+                <p className="muted small-text">Needed: {rwf(Math.max(0, pick.target - pick.raised))}</p>
               </div>
             </div>
           </div>
@@ -145,23 +142,22 @@ export default function Campaigns({ profile, notify, onSignIn }) {
             </label>
 
             <label>
-              Mobile Money Transaction ID (MTN / Airtel)
+              Mobile Money Transaction ID
               <input
                 required
                 value={f.momo_ref}
                 onChange={(e) => setF({ ...f, momo_ref: e.target.value })}
                 placeholder="e.g. MTN-RW-948201"
               />
-              <span className="muted small-text">Enter the reference code received in your MoMo confirmation SMS.</span>
             </label>
 
             {err && <div className="err" role="alert">{err}</div>}
 
             <div className="row" style={{ marginTop: 8 }}>
-              <button className="btn" disabled={busy}>
-                {busy ? 'Sending...' : 'Confirm Pledge'}
+              <button className="btn sm" disabled={busy}>
+                {busy ? 'Sending...' : 'Confirm'}
               </button>
-              <button type="button" className="btn ghost" onClick={() => setPick(null)}>
+              <button type="button" className="btn sm ghost" onClick={() => setPick(null)}>
                 Cancel
               </button>
             </div>

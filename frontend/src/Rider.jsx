@@ -6,7 +6,7 @@ export default function Rider({ notify }) {
   const [rows, setRows] = useState(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  const [f, setF] = useState({ permit_number: '', years_experience: '3', cooperative: 'Inziza Taxi Moto Cooperative', daily_income: '15000' });
+  const [f, setF] = useState({ permit_number: '', years_experience: '3', cooperative: 'Inziza Taxi Moto Co-op', daily_income: '15000' });
 
   const load = () => api('/applications').then(setRows).catch(() => setRows([]));
   useEffect(() => { load(); }, []);
@@ -19,7 +19,7 @@ export default function Rider({ notify }) {
     setErr('');
     try {
       await api('/applications', { method: 'POST', body: f });
-      notify('Lease application submitted successfully.');
+      notify('Application sent.');
       await load();
     } catch (x) {
       setErr(x.message);
@@ -31,34 +31,30 @@ export default function Rider({ notify }) {
   const activeApp = rows.find((r) => r.status !== 'rejected');
 
   const steps = [
-    { num: 1, title: 'Submitted', desc: 'Application received' },
-    { num: 2, title: 'Verification', desc: 'Permit & Cooperative check' },
-    { num: 3, title: 'Allocation', desc: 'E-Moto assignment' },
-    { num: 4, title: 'Active Lease', desc: 'Road-ready with daily tracking' }
+    { num: 1, title: 'Submitted' },
+    { num: 2, title: 'Verification' },
+    { num: 3, title: 'Allocation' },
+    { num: 4, title: 'Active Lease' }
   ];
 
   const getStepIndex = (status) => {
-    if (status === 'pending') return 1; // Step 1 done, 2 in progress
-    if (status === 'approved') return 3; // Step 3/4 done
+    if (status === 'pending') return 1;
+    if (status === 'approved') return 3;
     return 0;
   };
 
   return (
-    <div className="dashboard-view" style={{ maxWidth: 760, margin: '0 auto' }}>
+    <div className="dashboard-view" style={{ maxWidth: 720, margin: '0 auto' }}>
       <div className="section-head">
         <div>
-          <h2>Rider Lease Portal</h2>
-          <p className="muted">Lease a brand-new electric moto-taxi with daily income-based repayments.</p>
+          <h2>Rider Portal</h2>
         </div>
       </div>
 
       {activeApp && (
         <div className="card status-tracker-card">
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-              <span className="brand-logo sm"><Icon n="document-text" size={18} /></span>
-              <h3 style={{ margin: 0 }}>Lease Application Progress</h3>
-            </div>
+            <h3 style={{ margin: 0 }}>Application Status</h3>
             <Pill s={activeApp.status} />
           </div>
 
@@ -71,12 +67,9 @@ export default function Rider({ notify }) {
               return (
                 <div key={st.num} className={'step-item' + (isDone ? ' done' : '') + (isCurrent ? ' active' : '')}>
                   <div className="step-circle">
-                    {isDone ? <Icon n="check-circle" size={18} /> : st.num}
+                    {isDone ? <Icon n="check-circle" size={16} /> : st.num}
                   </div>
-                  <div className="step-content">
-                    <span className="step-title">{st.title}</span>
-                    <span className="step-desc muted small-text">{st.desc}</span>
-                  </div>
+                  <span className="step-title">{st.title}</span>
                 </div>
               );
             })}
@@ -84,19 +77,19 @@ export default function Rider({ notify }) {
 
           <div className="app-summary-box">
             <div className="app-data-row">
-              <span className="muted small-text">Permit Number:</span>
+              <span className="muted small-text">Permit:</span>
               <strong>{activeApp.permit_number}</strong>
             </div>
             <div className="app-data-row">
               <span className="muted small-text">Cooperative:</span>
-              <strong>{activeApp.cooperative || 'Independent'}</strong>
+              <strong>{activeApp.cooperative || 'N/A'}</strong>
             </div>
             <div className="app-data-row">
               <span className="muted small-text">Experience:</span>
-              <strong>{activeApp.years_experience} Years</strong>
+              <strong>{activeApp.years_experience} Yrs</strong>
             </div>
             <div className="app-data-row">
-              <span className="muted small-text">Expected Daily Income:</span>
+              <span className="muted small-text">Daily Income:</span>
               <strong>{rwf(activeApp.daily_income)}</strong>
             </div>
           </div>
@@ -107,81 +100,45 @@ export default function Rider({ notify }) {
         r.status === 'rejected' && (
           <div className="card err-card" key={r.id} style={{ marginBottom: 16 }}>
             <div className="row" style={{ justifyContent: 'space-between' }}>
-              <div className="row" style={{ gap: 8, color: 'var(--err)' }}>
-                <Icon n="danger-triangle" size={20} />
-                <strong>Application Status: Rejected</strong>
-              </div>
+              <strong>Application Rejected</strong>
               <Pill s="rejected" />
             </div>
-            {r.reason && <p style={{ marginTop: 8 }}><strong>Reason provided:</strong> {r.reason}</p>}
+            {r.reason && <p style={{ marginTop: 8 }}><strong>Reason:</strong> {r.reason}</p>}
           </div>
         )
       ))}
 
       {!activeApp && (
-        <div className="card form-card">
-          <div className="form-head">
-            <h3>Apply for an Electric Moto Lease</h3>
-            <p className="muted small-text">
-              Zero upfront vehicle cost. Verified riders receive an e-moto with battery swapping in Kigali.
-            </p>
+        <form className="card" onSubmit={submit}>
+          <h3>Apply for an E-Moto Lease</h3>
+          <div className="form-grid">
+            <label>
+              Permit Number
+              <input required value={f.permit_number} onChange={set('permit_number')} placeholder="RW-DL-2023-88371" />
+            </label>
+
+            <label>
+              Years Riding
+              <input required type="number" min="0" max="40" value={f.years_experience} onChange={set('years_experience')} />
+            </label>
+
+            <label>
+              Cooperative
+              <input value={f.cooperative} onChange={set('cooperative')} placeholder="Inziza Taxi Moto Co-op" />
+            </label>
+
+            <label>
+              Daily Income (RWF)
+              <input required type="number" min="1000" step="500" value={f.daily_income} onChange={set('daily_income')} />
+            </label>
           </div>
 
-          <form onSubmit={submit}>
-            <div className="form-grid">
-              <label>
-                Rwandan Driving Permit Number (Category A)
-                <input
-                  required
-                  value={f.permit_number}
-                  onChange={set('permit_number')}
-                  placeholder="e.g. RW-DL-2023-88371"
-                />
-              </label>
+          {err && <div className="err" role="alert">{err}</div>}
 
-              <label>
-                Years of Riding Experience
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  max="40"
-                  value={f.years_experience}
-                  onChange={set('years_experience')}
-                  placeholder="3"
-                />
-              </label>
-
-              <label>
-                Cooperative / Station Name
-                <input
-                  value={f.cooperative}
-                  onChange={set('cooperative')}
-                  placeholder="e.g. Inziza Taxi Moto Co-op"
-                />
-              </label>
-
-              <label>
-                Average Daily Income (RWF)
-                <input
-                  required
-                  type="number"
-                  min="1000"
-                  step="500"
-                  value={f.daily_income}
-                  onChange={set('daily_income')}
-                  placeholder="15000"
-                />
-              </label>
-            </div>
-
-            {err && <div className="err" role="alert">{err}</div>}
-
-            <button className="btn btn-primary" style={{ marginTop: 12 }} disabled={busy}>
-              {busy ? 'Submitting Application...' : 'Submit Lease Application'}
-            </button>
-          </form>
-        </div>
+          <button className="btn btn-primary sm" style={{ marginTop: 8, alignSelf: 'flex-start' }} disabled={busy}>
+            {busy ? 'Submitting...' : 'Submit Application'}
+          </button>
+        </form>
       )}
     </div>
   );

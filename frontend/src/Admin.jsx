@@ -23,10 +23,8 @@ export function Review({ notify }) {
   };
 
   const reject = (id) => {
-    const reason = window.prompt('Reason for rejecting application:');
-    if (reason) {
-      act('/applications/' + id, { status: 'rejected', reason }, 'Application rejected.');
-    }
+    const reason = window.prompt('Reason for rejection:');
+    if (reason) act('/applications/' + id, { status: 'rejected', reason }, 'Rejected.');
   };
 
   if (!pl || !ap) return <Skeletons n={2} />;
@@ -37,46 +35,43 @@ export function Review({ notify }) {
   return (
     <div className="dashboard-view">
       <div className="section-head">
-        <div>
-          <h2>Admin Review Center</h2>
-          <p className="muted">Verify incoming MoMo payments and review rider lease requests.</p>
-        </div>
+        <h2>Admin Review</h2>
       </div>
 
-      <div className="stats-grid" style={{ marginBottom: 24 }}>
+      <div className="stats-grid" style={{ marginBottom: 20 }}>
         <div className="card stat-card">
           <div className="stat-icon-wrap" style={{ background: 'var(--warn-bg)', color: 'var(--warn)' }}>
-            <Icon n="clock-circle" size={24} />
+            <Icon n="clock-circle" size={22} />
           </div>
           <div className="stat-info">
             <span className="muted small-text">Pending Pledges</span>
-            <h3 className="stat-number">{pend.length} Waiting</h3>
+            <h3 className="stat-number">{pend.length}</h3>
           </div>
         </div>
 
         <div className="card stat-card">
           <div className="stat-icon-wrap" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>
-            <Icon n="document-text" size={24} />
+            <Icon n="document-text" size={22} />
           </div>
           <div className="stat-info">
             <span className="muted small-text">Pending Applications</span>
-            <h3 className="stat-number">{apps.length} Waiting</h3>
+            <h3 className="stat-number">{apps.length}</h3>
           </div>
         </div>
       </div>
 
       <section className="section" style={{ marginTop: 0 }}>
-        <h3>Pledges Awaiting Payment Confirmation</h3>
+        <h3>Pledges</h3>
         {!pend.length ? (
-          <Empty icon="shield-check" text="No pledges waiting. All payments are reviewed." />
+          <Empty icon="shield-check" text="No pledges waiting." />
         ) : (
           <div className="list">
             {pend.map((p) => (
               <div className="item" key={p.id}>
                 <div>
                   <strong>{rwf(p.amount)}</strong> for {p.campaigns?.model}
-                  <p className="muted small-text" style={{ marginTop: 2 }}>
-                    Investor: {p.profiles?.full_name} ({p.profiles?.phone}) · Ref: <code className="ref-code">{p.momo_ref}</code>
+                  <p className="muted small-text">
+                    {p.profiles?.full_name} · Ref: <code className="ref-code">{p.momo_ref}</code>
                   </p>
                 </div>
                 <div className="row" style={{ gap: 8 }}>
@@ -93,22 +88,22 @@ export function Review({ notify }) {
         )}
       </section>
 
-      <section className="section">
-        <h3>Rider Applications Awaiting Approval</h3>
+      <section className="section" style={{ marginTop: 24 }}>
+        <h3>Rider Applications</h3>
         {!apps.length ? (
-          <Empty icon="document-text" text="No rider applications waiting." />
+          <Empty icon="document-text" text="No applications waiting." />
         ) : (
           <div className="list">
             {apps.map((a) => (
               <div className="item" key={a.id}>
                 <div>
                   <strong>{a.profiles?.full_name}</strong>
-                  <p className="muted small-text" style={{ marginTop: 2 }}>
-                    Permit: <code className="ref-code">{a.permit_number}</code> · {a.years_experience} yrs exp · Cooperative: {a.cooperative || 'N/A'} · Expected {rwf(a.daily_income)}/day
+                  <p className="muted small-text">
+                    Permit: <code className="ref-code">{a.permit_number}</code> · {a.years_experience} yrs · {a.cooperative || 'N/A'} · {rwf(a.daily_income)}/day
                   </p>
                 </div>
                 <div className="row" style={{ gap: 8 }}>
-                  <button className="btn sm" onClick={() => act('/applications/' + a.id, { status: 'approved' }, 'Application approved.')}>
+                  <button className="btn sm" onClick={() => act('/applications/' + a.id, { status: 'approved' }, 'Approved.')}>
                     Approve
                   </button>
                   <button className="btn sm danger" onClick={() => reject(a.id)}>
@@ -125,34 +120,14 @@ export function Review({ notify }) {
 }
 
 export function NewCampaign({ notify }) {
-  const [f, setF] = useState({
-    model: '',
-    target: '',
-    lease_months: 24,
-    photo_url: ''
-  });
+  const [f, setF] = useState({ model: '', target: '', lease_months: 24, photo_url: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
   const presets = [
-    {
-      model: 'Ampersand Model 1 Pro',
-      target: '2200000',
-      lease_months: 24,
-      photo_url: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=800&q=80'
-    },
-    {
-      model: 'Spiro Commando E-Bike',
-      target: '1950000',
-      lease_months: 24,
-      photo_url: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=800&q=80'
-    },
-    {
-      model: 'Roam Air Gen-2 Urban',
-      target: '2400000',
-      lease_months: 24,
-      photo_url: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=800&q=80'
-    }
+    { model: 'Ampersand Model 1 Pro', target: '2200000', lease_months: 24, photo_url: '/images/download.w-Ampersand2.webp' },
+    { model: 'Spiro Commando E-Bike', target: '1950000', lease_months: 24, photo_url: '/images/SPIRO EKON M3 1.png' },
+    { model: 'Roam Air Gen-2 Urban', target: '2400000', lease_months: 24, photo_url: '/images/spiro-ekon-450m2-1400x933.webp' }
   ];
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -164,7 +139,7 @@ export function NewCampaign({ notify }) {
     try {
       await api('/campaigns', { method: 'POST', body: f });
       setF({ model: '', target: '', lease_months: 24, photo_url: '' });
-      notify('New e-moto campaign created successfully.');
+      notify('Campaign created.');
     } catch (x) {
       setErr(x.message);
     }
@@ -172,25 +147,17 @@ export function NewCampaign({ notify }) {
   };
 
   return (
-    <div style={{ maxWidth: 580, margin: '0 auto' }}>
+    <div style={{ maxWidth: 520, margin: '0 auto' }}>
       <div className="section-head">
-        <div>
-          <h2>Create New E-Moto Campaign</h2>
-          <p className="muted">List a new electric motorcycle for micro-investment and rider leasing.</p>
-        </div>
+        <h2>New Campaign</h2>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <span className="muted small-text">Quick Presets:</span>
         <div className="row" style={{ marginTop: 8, gap: 8 }}>
           {presets.map((p) => (
-            <button
-              key={p.model}
-              type="button"
-              className="btn sm ghost"
-              onClick={() => setF({ ...p })}
-            >
-              {p.model.split(' ')[0]} Preset
+            <button key={p.model} type="button" className="btn sm ghost" onClick={() => setF({ ...p })}>
+              {p.model.split(' ')[0]}
             </button>
           ))}
         </div>
@@ -198,36 +165,33 @@ export function NewCampaign({ notify }) {
 
       <form className="card" onSubmit={submit}>
         <label>
-          E-Moto Model Name
-          <input required value={f.model} onChange={set('model')} placeholder="e.g. Ampersand Model 1 Pro" />
+          Model Name
+          <input required value={f.model} onChange={set('model')} placeholder="Ampersand Model 1 Pro" />
         </label>
 
         <label>
-          Funding Target (RWF)
+          Target (RWF)
           <input required type="number" min="100000" step="50000" value={f.target} onChange={set('target')} placeholder="2200000" />
         </label>
 
         <label>
-          Lease Term (Months)
+          Lease Months
           <input required type="number" min="6" max="48" value={f.lease_months} onChange={set('lease_months')} />
         </label>
 
         <label>
-          Photo URL (Image of E-Moto)
-          <input value={f.photo_url} onChange={set('photo_url')} placeholder="https://..." />
+          Photo URL
+          <input value={f.photo_url} onChange={set('photo_url')} placeholder="/images/..." />
         </label>
 
         {f.photo_url && (
-          <div className="preview-mini-wrap">
-            <span className="muted small-text">Image Preview:</span>
-            <img src={f.photo_url} alt="Preview" className="form-img-preview" />
-          </div>
+          <img src={f.photo_url} alt="Preview" className="form-img-preview" />
         )}
 
         {err && <div className="err" role="alert">{err}</div>}
 
-        <button className="btn btn-primary" style={{ marginTop: 8 }} disabled={busy}>
-          {busy ? 'Creating Campaign...' : 'Launch Campaign'}
+        <button className="btn btn-primary sm" style={{ marginTop: 8, alignSelf: 'flex-start' }} disabled={busy}>
+          {busy ? 'Saving...' : 'Create Campaign'}
         </button>
       </form>
     </div>
