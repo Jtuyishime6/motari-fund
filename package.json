@@ -1,0 +1,8 @@
+{ "name": "motari-fund", "version": "1.0.0", "private": true, "type": "module",
+  "scripts": {
+    "dev:api": "node --watch --env-file=.env backend/src/server.js",
+    "dev:web": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend install && npm --prefix frontend run build"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": { "@supabase/supabase-js": "^2.45.0", "cors": "^2.8.5", "express": "^4.19.2" } }
