@@ -1,5 +1,6 @@
 { "name": "motari-fund", "version": "1.0.0", "private": true, "type": "module",
   "scripts": {
+    "start": "node backend/src/server.js",
     "dev:api": "node --watch --env-file=.env backend/src/server.js",
     "dev:web": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend install && npm --prefix frontend run build"
