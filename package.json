@@ -3,7 +3,9 @@
     "start": "node backend/src/server.js",
     "dev:api": "node --watch --env-file=.env backend/src/server.js",
     "dev:web": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend install && npm --prefix frontend run build"
+    "build": "npm --prefix frontend install && npm --prefix frontend run build",
+    "admin:create": "node --env-file=.env scripts/create-admin.mjs",
+    "seed:demo": "node --env-file=.env scripts/seed-demo.mjs"
   },
   "engines": { "node": ">=18" },
   "dependencies": { "@supabase/supabase-js": "^2.45.0", "cors": "^2.8.5", "express": "^4.19.2" } }

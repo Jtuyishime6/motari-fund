@@ -1,107 +1,85 @@
 import { useEffect, useState } from 'react';
 import { api, rwf } from './lib.js';
-import { Pill, Skeletons, Empty, Icon } from './ui.jsx';
+import { Pill, Empty, Icon, PageHead } from './ui.jsx';
+import { CountUp, Stagger, Item } from './motion.jsx';
 
-export default function Investor({ goCampaigns }) {
+const RATE = 0.65;
+
+export default function Investor({ goCampaigns, name }) {
   const [rows, setRows] = useState(null);
 
   useEffect(() => {
     api('/pledges').then(setRows).catch(() => setRows([]));
   }, []);
 
-  if (!rows) return <Skeletons n={2} />;
+  const action = <button className="btn sm" onClick={goCampaigns}><Icon n="add-circle" size={16} /> Invest</button>;
 
-  const confirmedRows = rows.filter((r) => r.status === 'confirmed');
-  const total = confirmedRows.reduce((s, r) => s + r.amount, 0);
-  const pendingTotal = rows.filter((r) => r.status === 'pending').reduce((s, r) => s + r.amount, 0);
-  const distinctMotos = new Set(confirmedRows.map((r) => r.campaign_id)).size;
-  const cleanKm = Math.round(total / 80);
+  if (!rows) {
+    return (
+      <>
+        <PageHead title={`Hi ${name}`} />
+        <div className="stats">{[0, 1, 2].map((i) => <div className="stat" key={i}><div className="sk" style={{ height: 52 }} /></div>)}</div>
+      </>
+    );
+  }
+
+  const confirmed = rows.filter((r) => r.status === 'confirmed');
+  const total = confirmed.reduce((s, r) => s + r.amount, 0);
+  const pending = rows.filter((r) => r.status === 'pending').reduce((s, r) => s + r.amount, 0);
+  const bikes = new Set(confirmed.map((r) => r.campaign_id)).size;
+
+  if (!rows.length) {
+    return (
+      <>
+        <PageHead title={`Hi ${name}`} />
+        <div className="card">
+          <Empty icon="bolt" text="Back your first e-moto from 10,000 RWF." action={<button className="btn" onClick={goCampaigns}>Browse e-motos</button>} />
+        </div>
+      </>
+    );
+  }
 
   return (
-    <div className="dashboard-view">
-      <div className="section-head">
-        <div>
-          <h2>Investor Portfolio</h2>
-        </div>
-        <button className="btn sm" onClick={goCampaigns}>
-          <Icon n="add-circle" size={16} />
-          <span>New Pledge</span>
-        </button>
-      </div>
+    <>
+      <PageHead title={`Hi ${name}`} action={action} />
 
-      <div className="stats-grid">
-        <div className="card stat-card">
-          <div className="stat-icon-wrap" style={{ background: 'var(--mist)', color: 'var(--accent)' }}>
-            <Icon n="wallet-2" size={22} />
-          </div>
-          <div className="stat-info">
-            <span className="muted small-text">Total Invested</span>
-            <h3 className="stat-number">{rwf(total)}</h3>
-            {pendingTotal > 0 && (
-              <span className="pending-badge">+{rwf(pendingTotal)} pending</span>
-            )}
-          </div>
-        </div>
+      <Stagger className="stats">
+        <Item className="stat">
+          <div className="stat-lbl"><Icon n="wallet-2" size={18} /> Invested</div>
+          <div className="stat-val"><CountUp to={total} suffix=" RWF" duration={1.2} /></div>
+          {pending > 0 && <div className="stat-sub">+{rwf(pending)} pending</div>}
+        </Item>
+        <Item className="stat">
+          <div className="stat-lbl"><Icon n="chart-2" size={18} /> Projected return</div>
+          <div className="stat-val"><CountUp to={Math.round(total * RATE)} prefix="+" suffix=" RWF" duration={1.2} /></div>
+          <div className="stat-sub">Up to 65% over 24 months</div>
+        </Item>
+        <Item className="stat">
+          <div className="stat-lbl"><Icon n="bolt" size={18} /> E-motos backed</div>
+          <div className="stat-val"><CountUp to={bikes} duration={1.2} /></div>
+        </Item>
+      </Stagger>
 
-        <div className="card stat-card">
-          <div className="stat-icon-wrap" style={{ background: 'var(--ok-bg)', color: 'var(--ok)' }}>
-            <Icon n="bolt" size={22} />
-          </div>
-          <div className="stat-info">
-            <span className="muted small-text">Active E-Motos</span>
-            <h3 className="stat-number">{distinctMotos}</h3>
-          </div>
-        </div>
-
-        <div className="card stat-card">
-          <div className="stat-icon-wrap" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>
-            <Icon n="leaf" size={22} />
-          </div>
-          <div className="stat-info">
-            <span className="muted small-text">Clean Impact</span>
-            <h3 className="stat-number">{cleanKm.toLocaleString()} KM</h3>
-          </div>
-        </div>
-      </div>
-
-      <div className="section" style={{ marginTop: 24 }}>
-        <h3>Pledges</h3>
-
-        {!rows.length ? (
-          <Empty
-            icon="wallet-2"
-            text="No pledges yet."
-            action={
-              <button className="btn sm" onClick={goCampaigns}>
-                Browse E-Motos
-              </button>
-            }
-          />
-        ) : (
-          <div className="list">
-            {rows.map((r) => (
-              <div className="item pledge-item" key={r.id}>
-                <div className="row" style={{ gap: 12, alignItems: 'center' }}>
-                  <div className="moto-mini-avatar">
-                    <Icon n="bolt" size={18} />
-                  </div>
-                  <div>
-                    <strong>{r.campaigns?.model || 'E-Moto'}</strong>
-                    <p className="muted small-text">
-                      Ref: <code className="ref-code">{r.momo_ref}</code> · {new Date(r.created_at).toLocaleDateString('en-RW', { month: 'short', day: 'numeric' })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="row" style={{ gap: 12, alignItems: 'center' }}>
-                  <strong>{rwf(r.amount)}</strong>
-                  <Pill s={r.status} />
+      <div className="card">
+        <div className="card-head"><h3>Pledges</h3></div>
+        <div className="rows">
+          {rows.map((r) => (
+            <div className="row-item" key={r.id}>
+              <div className="row-lead">
+                <div className="thumb">{r.campaigns?.photo_url ? <img src={r.campaigns.photo_url} alt="" /> : <Icon n="bolt" />}</div>
+                <div className="row-main">
+                  <strong>{r.campaigns?.model || 'E-moto'}</strong>
+                  <div className="tiny">{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · <code className="ref">{r.momo_ref}</code></div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+              <div className="row-side">
+                <strong>{rwf(r.amount)}</strong>
+                <Pill s={r.status} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
