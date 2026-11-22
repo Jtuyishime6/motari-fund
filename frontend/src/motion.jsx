@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { motion, useInView, useMotionValue, useSpring, useReducedMotion } from 'framer-motion';
+import { Fragment, useEffect, useRef } from 'react';
+import { motion, useInView, useMotionValue, useSpring, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 
-const EASE = [0.22, 1, 0.36, 1];
+export const EASE = [0.22, 1, 0.36, 1];
 
-/** Counts from `from` to `to` once, when scrolled into view. */
-export function CountUp({ to, from = 0, decimals = 0, prefix = '', suffix = '', duration = 1.6, format = true }) {
+/** Rolls a number up once when it scrolls into view (React Bits "CountUp"). */
+export function CountUp({ to, from = 0, decimals = 0, prefix = '', suffix = '', duration = 1.4, format = true }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '0px 0px -10% 0px' });
   const reduce = useReducedMotion();
@@ -17,19 +17,20 @@ export function CountUp({ to, from = 0, decimals = 0, prefix = '', suffix = '', 
     return `${prefix}${shown}${suffix}`;
   };
 
+  // Subscribe before setting the target so the first change is never missed.
+  useEffect(() => spring.on('change', (n) => { if (ref.current) ref.current.textContent = render(n); }), [spring, decimals, prefix, suffix]);
+
   useEffect(() => {
     if (!inView) return;
     if (reduce) { if (ref.current) ref.current.textContent = render(to); return; }
     value.set(to);
-  }, [inView, to]);
+  }, [inView, to, reduce]);
 
-  useEffect(() => spring.on('change', (n) => { if (ref.current) ref.current.textContent = render(n); }), [spring, decimals, prefix, suffix]);
-
-  return <span ref={ref} style={{ fontVariantNumeric: 'tabular-nums' }}>{render(from)}</span>;
+  return <span ref={ref} className="tnum">{render(reduce ? to : from)}</span>;
 }
 
-/** Fades and lifts its children in when they enter the viewport. */
-export function Reveal({ children, delay = 0, y = 24, className, as = 'div' }) {
+/** Lifts content in once as it enters the viewport. Used sparingly, for section heads. */
+export function Reveal({ children, delay = 0, y = 20, className, as = 'div', ...rest }) {
   const M = motion[as];
   return (
     <M
@@ -38,16 +39,17 @@ export function Reveal({ children, delay = 0, y = 24, className, as = 'div' }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '0px 0px -12% 0px' }}
       transition={{ duration: 0.7, ease: EASE, delay }}
+      {...rest}
     >
       {children}
     </M>
   );
 }
 
-/** Container that staggers `Item` children. */
-export function Stagger({ children, className, gap = 0.08 }) {
+export function Stagger({ children, className, gap = 0.07, as = 'div' }) {
+  const M = motion[as];
   return (
-    <motion.div
+    <M
       className={className}
       initial="hidden"
       whileInView="show"
@@ -55,12 +57,12 @@ export function Stagger({ children, className, gap = 0.08 }) {
       variants={{ hidden: {}, show: { transition: { staggerChildren: gap } } }}
     >
       {children}
-    </motion.div>
+    </M>
   );
 }
 
 export const itemVariants = {
-  hidden: { opacity: 0, y: 28 },
+  hidden: { opacity: 0, y: 18 },
   show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE } }
 };
 
@@ -69,33 +71,68 @@ export function Item({ children, className, as = 'div', ...rest }) {
   return <M className={className} variants={itemVariants} {...rest}>{children}</M>;
 }
 
-/** Headline that reveals word by word with a soft blur. */
-export function SplitText({ text, className, accent }) {
+/** Headline whose words rise out of a clipped line, one after another. */
+export function Words({ text, delay = 0, className }) {
   const words = text.split(' ');
   return (
-    <motion.span
-      className={className}
-      initial="hidden"
-      animate="show"
-      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } } }}
-      aria-label={text}
-    >
+    <span className={className} aria-label={text}>
       {words.map((w, i) => (
-        <motion.span
-          key={i}
-          aria-hidden="true"
-          style={{ display: 'inline-block', whiteSpace: 'pre' }}
-          className={accent?.includes(i) ? 'accent' : undefined}
-          variants={{
-            hidden: { opacity: 0, y: 18, filter: 'blur(8px)' },
-            show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.6, ease: EASE } }
-          }}
-        >
-          {w + (i < words.length - 1 ? ' ' : '')}
-        </motion.span>
+        <Fragment key={i}>
+          <span className="word-mask" aria-hidden="true">
+            <motion.span
+              style={{ display: 'inline-block' }}
+              initial={{ y: '110%' }}
+              animate={{ y: '0%' }}
+              transition={{ duration: 0.9, ease: EASE, delay: delay + i * 0.06 }}
+            >
+              {w}
+            </motion.span>
+          </span>
+          {i < words.length - 1 ? ' ' : null}
+        </Fragment>
       ))}
-    </motion.span>
+    </span>
   );
 }
 
-export { motion, EASE };
+/** Endless horizontal track (Aceternity "Infinite Moving Cards"). Pauses on hover, stops for reduced motion. */
+export function Marquee({ children, speed = 40, className = '' }) {
+  return (
+    <div className={'marquee ' + className}>
+      <div className="marquee-track" style={{ '--marquee-duration': `${speed}s` }}>
+        <div className="marquee-group">{children}</div>
+        <div className="marquee-group" aria-hidden="true">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/** A product frame that tilts flat as it scrolls into place (Aceternity "Container Scroll"). */
+export function ScrollTilt({ children, className }) {
+  const ref = useRef(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'start 0.35'] });
+  const rotateX = useTransform(scrollYProgress, [0, 1], [reduce ? 0 : 18, 0]);
+  const scale = useTransform(scrollYProgress, [0, 1], [reduce ? 1 : 0.94, 1]);
+  const y = useTransform(scrollYProgress, [0, 1], [reduce ? 0 : 40, 0]);
+  return (
+    <div ref={ref} className={'tilt-stage ' + (className || '')}>
+      <motion.div style={{ rotateX, scale, y, transformPerspective: 1400 }} className="tilt-frame">
+        {children}
+      </motion.div>
+    </div>
+  );
+}
+
+/** Vertical progress rail that fills as the reader scrolls through a sequence (Aceternity "Timeline"). */
+export function ScrollRail({ targetRef }) {
+  const { scrollYProgress } = useScroll({ target: targetRef, offset: ['start 70%', 'end 60%'] });
+  const scaleY = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  return (
+    <div className="rail" aria-hidden="true">
+      <motion.div className="rail-fill" style={{ scaleY }} />
+    </div>
+  );
+}
+
+export { motion };

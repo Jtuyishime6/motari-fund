@@ -1,12 +1,11 @@
-import { useEffect } from 'react';
-import { Icon as Iconify } from '@iconify/react';
+import { useEffect, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Icon } from './icons.jsx';
 
-export const Icon = ({ n, size = 20 }) => (
-  <Iconify icon={`solar:${n}-linear`} width={size} height={size} aria-hidden="true" />
-);
+export { Icon };
 
 const LABELS = { open: 'Open', funded: 'Funded', pending: 'Pending', confirmed: 'Confirmed', rejected: 'Rejected', approved: 'Approved' };
-export const Pill = ({ s }) => <span className={`pill ${s}`}>{LABELS[s] || s}</span>;
+export const Pill = ({ s, children }) => <span className={`pill ${s}`}><i aria-hidden="true" />{children || LABELS[s] || s}</span>;
 
 export const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -20,46 +19,78 @@ export const GoogleIcon = () => (
 export const Skeletons = ({ n = 3 }) => (
   <div className="moto-grid" aria-busy="true" aria-label="Loading">
     {Array.from({ length: n }, (_, i) => (
-      <div className="card" key={i}>
-        <div className="sk" style={{ height: 160, marginBottom: 16 }} />
-        <div className="sk" style={{ height: 16, width: '60%', marginBottom: 10 }} />
-        <div className="sk" style={{ height: 12, width: '40%' }} />
+      <div className="moto" key={i}>
+        <div className="sk" style={{ aspectRatio: '3 / 2', borderRadius: 0 }} />
+        <div style={{ padding: 20 }}>
+          <div className="sk" style={{ height: 18, width: '60%', marginBottom: 14 }} />
+          <div className="sk" style={{ height: 8, marginBottom: 14 }} />
+          <div className="sk" style={{ height: 12, width: '40%' }} />
+        </div>
       </div>
     ))}
   </div>
 );
 
-export const Empty = ({ icon, text, action }) => (
+export const Empty = ({ icon, title, text, action }) => (
   <div className="empty">
-    <div className="ic"><Icon n={icon} size={24} /></div>
+    <div className="empty-ic"><Icon n={icon} size={22} /></div>
+    {title && <h4>{title}</h4>}
     <p>{text}</p>
     {action}
   </div>
 );
 
-export const Modal = ({ title, onClose, children }) => {
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([tabindex="-1"]), select, textarea, [tabindex]:not([tabindex="-1"])';
+
+/** Accessible dialog: traps focus, closes on Escape or backdrop, and returns focus to the opener. */
+export function Modal({ title, sub, onClose, children, wide }) {
+  const ref = useRef(null);
+  const close = useRef(onClose);
+  close.current = onClose;
+
   useEffect(() => {
+    const opener = document.activeElement;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    const first = ref.current?.querySelector('[autofocus], input, select, textarea') || ref.current?.querySelector(FOCUSABLE);
+    first?.focus();
+    const onKey = (e) => {
+      if (e.key === 'Escape') close.current();
+      if (e.key !== 'Tab' || !ref.current) return;
+      const els = [...ref.current.querySelectorAll(FOCUSABLE)];
+      if (!els.length) return;
+      const [a, z] = [els[0], els[els.length - 1]];
+      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); }
+      else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+    };
     window.addEventListener('keydown', onKey);
-    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey); };
-  }, [onClose]);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+      opener?.focus?.();
+    };
+  }, []);
 
   return (
-    <div className="sheet" onClick={onClose}>
-      <div className="dialog" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+    <motion.div className="sheet" onMouseDown={(e) => e.target === e.currentTarget && onClose()} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
+      <motion.div
+        ref={ref} className={'dialog' + (wide ? ' wide' : '')} role="dialog" aria-modal="true" aria-labelledby="dialog-title"
+        initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="dialog-head">
-          <h3>{title}</h3>
+          <div>
+            <h3 id="dialog-title">{title}</h3>
+            {sub && <p className="dialog-sub">{sub}</p>}
+          </div>
           <button type="button" className="btn ghost icon-btn" onClick={onClose} aria-label="Close">
-            <Icon n="close-circle" size={22} />
+            <Icon n="x" size={20} />
           </button>
         </div>
         {children}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
-};
+}
 
 export const PageHead = ({ title, sub, action }) => (
   <div className="page-head">
@@ -67,6 +98,31 @@ export const PageHead = ({ title, sub, action }) => (
       <h1>{title}</h1>
       {sub && <p>{sub}</p>}
     </div>
-    {action}
+    {action && <div className="page-actions">{action}</div>}
   </div>
 );
+
+export function Toast({ message }) {
+  return (
+    <div className="toast-region" aria-live="polite">
+      <AnimatePresence>
+        {message && (
+          <motion.div
+            key={message} className="toast" role="status"
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.22 }}
+          >
+            <Icon n="checkCircle" size={18} /> {message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export function Progress({ value, tone }) {
+  return (
+    <div className={'bar' + (tone ? ' ' + tone : '')} role="progressbar" aria-valuenow={value} aria-valuemin="0" aria-valuemax="100" aria-label={`${value}% funded`}>
+      <motion.i initial={{ width: 0 }} whileInView={{ width: value + '%' }} viewport={{ once: true }} transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }} />
+    </div>
+  );
+}
