@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from './lib.js';
-import { DISTRICTS } from './Rider.jsx';
+import { DISTRICTS, normPhone } from '../../shared/rules.js';
+import { Icon } from './ui.jsx';
 import { Reveal } from './motion.jsx';
 
 export default function Onboarding({ profile, onDone }) {
@@ -11,6 +12,7 @@ export default function Onboarding({ profile, onDone }) {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!normPhone(f.phone)) { setErr('Enter a valid MTN or Airtel number, e.g. 0788123456'); return; }
     setBusy(true);
     setErr('');
     try {
@@ -26,12 +28,12 @@ export default function Onboarding({ profile, onDone }) {
       <div style={{ maxWidth: 460, margin: '0 auto' }}>
         <div className="page-head">
           <div>
-            <h1>Almost there</h1>
-            <p>Your Mobile Money number is where returns are paid.</p>
+            <h1>Set up your investor account</h1>
+            <p>We pay returns to your Mobile Money number, so make sure it is yours.</p>
           </div>
         </div>
 
-        <form className="card" onSubmit={submit}>
+        <form className="panel form" onSubmit={submit}>
           <label>
             Full name
             <input required value={f.full_name} onChange={set('full_name')} autoComplete="name" />
@@ -48,9 +50,9 @@ export default function Onboarding({ profile, onDone }) {
             </select>
           </label>
 
-          {err && <div className="err" role="alert">{err}</div>}
+          {err && <div className="err" role="alert"><Icon n="alert" size={16} /> {err}</div>}
 
-          <button className="btn lg block" disabled={busy}>{busy ? 'Saving...' : 'Continue'}</button>
+          <button className="btn lg block" disabled={busy}>{busy ? 'Saving...' : 'Continue to e-motos'}</button>
         </form>
       </div>
     </Reveal>

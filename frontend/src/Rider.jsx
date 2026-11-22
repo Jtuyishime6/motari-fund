@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { api } from './lib.js';
 import { Icon, Modal } from './ui.jsx';
-
-export const DISTRICTS = ['Gasabo', 'Kicukiro', 'Nyarugenge', 'Other'];
+import { DISTRICTS, normPhone } from '../../shared/rules.js';
 
 const EMPTY = { full_name: '', phone: '', district: '', permit_number: '', years_experience: '', cooperative: '', daily_income: '', website: '' };
 
@@ -16,6 +15,7 @@ export default function RiderApply({ onClose }) {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!normPhone(f.phone)) { setErr('Enter a valid MTN or Airtel number, e.g. 0788123456'); return; }
     setBusy(true);
     setErr('');
     try {
@@ -31,7 +31,7 @@ export default function RiderApply({ onClose }) {
     return (
       <Modal title="Application received" onClose={onClose}>
         <div className="success">
-          <div className="success-ic"><Icon n="check-circle" size={30} /></div>
+          <div className="success-ic"><Icon n="checkCircle" size={28} /></div>
           <p>Thank you, {f.full_name.split(' ')[0]}. We will call you on <strong>{f.phone}</strong> to verify your details.</p>
           <button className="btn block" onClick={onClose}>Done</button>
         </div>
@@ -40,8 +40,7 @@ export default function RiderApply({ onClose }) {
   }
 
   return (
-    <Modal title="Apply as a rider" onClose={onClose}>
-      <p className="muted small" style={{ marginBottom: 18 }}>Takes 1 minute. No account needed.</p>
+    <Modal title="Apply for an e-moto" sub="Takes about a minute. No account needed, and we call you to verify." onClose={onClose}>
       <form onSubmit={submit}>
         <label>
           Full name
@@ -78,9 +77,10 @@ export default function RiderApply({ onClose }) {
         </div>
         <input className="hp" tabIndex={-1} autoComplete="off" value={f.website} onChange={set('website')} aria-hidden="true" />
 
-        {err && <div className="err" role="alert">{err}</div>}
+        {err && <div className="err" role="alert"><Icon n="alert" size={16} /> {err}</div>}
 
-        <button className="btn lg block" disabled={busy}>{busy ? 'Sending...' : 'Send application'}</button>
+        <button className="btn lg block" disabled={busy}>{busy ? 'Sending application...' : 'Send application'}</button>
+        <p className="form-foot">By applying you agree that MOTARI may call you to verify your details.</p>
       </form>
     </Modal>
   );
