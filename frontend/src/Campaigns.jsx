@@ -1,137 +1,151 @@
 import { useEffect, useState } from 'react';
-import { api, rwf } from './lib.js';
-import { Icon, Pill, Skeletons, Empty, Modal } from './ui.jsx';
-import { Stagger, Item, motion } from './motion.jsx';
+import { api, fmt, rwf, pct as pctOf } from './lib.js';
+import { MIN_PLEDGE, projectReturn } from '../../shared/rules.js';
+import { Icon, Pill, Skeletons, Empty, Modal, Progress } from './ui.jsx';
+import { Stagger, Item } from './motion.jsx';
 
-const PRESETS = [10000, 25000, 50000, 100000];
-const fmt = (n) => new Intl.NumberFormat('en-RW').format(n);
+const PRESETS = [10000, 25000, 50000, 100000, 250000];
 
-export default function Campaigns({ profile, notify, onSignIn, onPledged, limit }) {
-  const [items, setItems] = useState(null);
-  const [pick, setPick] = useState(null);
-  const [f, setF] = useState({ amount: '25000', momo_ref: '' });
+function PledgeDialog({ campaign, onClose, onDone }) {
+  const left = Math.max(0, campaign.target - campaign.raised);
+  const [amount, setAmount] = useState(String(Math.min(25000, left)));
+  const [ref, setRef] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const n = Number(amount) || 0;
+  const tooSmall = n > 0 && n < MIN_PLEDGE;
+  const tooBig = n > left;
+  const { total } = projectReturn(n, campaign.lease_months);
 
-  const load = () => api('/campaigns').then(setItems).catch(() => setItems([]));
-  useEffect(() => { load(); }, []);
-
-  const open = (c) => {
-    const left = Math.max(0, c.target - c.raised);
-    setF({ amount: String(Math.min(25000, left)), momo_ref: '' });
-    setErr('');
-    setPick(c);
-  };
-
-  const pledge = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (tooSmall || tooBig) return;
     setBusy(true);
     setErr('');
     try {
-      await api('/pledges', { method: 'POST', body: { campaign_id: pick.id, ...f } });
-      setPick(null);
-      notify('Pledge sent. We will confirm it once the payment is verified.');
-      load();
-      onPledged?.();
+      await api('/pledges', { method: 'POST', body: { campaign_id: campaign.id, amount: n, momo_ref: ref.trim() } });
+      onDone();
     } catch (x) {
       setErr(x.message);
+      setBusy(false);
     }
-    setBusy(false);
   };
 
+  return (
+    <Modal title={`Back the ${campaign.model}`} sub={`${rwf(left)} still needed`} onClose={onClose}>
+      <form onSubmit={submit} className="pledge-form">
+        <fieldset>
+          <legend>1. Choose an amount</legend>
+          <div className="chips">
+            {PRESETS.filter((a) => a <= left).map((a) => (
+              <button key={a} type="button" className={'chip' + (n === a ? ' on' : '')} aria-pressed={n === a} onClick={() => setAmount(String(a))}>
+                {fmt(a)}
+              </button>
+            ))}
+          </div>
+          <div className="input-affix">
+            <input
+              required inputMode="numeric" type="number" min={MIN_PLEDGE} max={left} step="1000" value={amount}
+              onChange={(e) => setAmount(e.target.value)} aria-label="Amount in RWF" aria-invalid={tooSmall || tooBig}
+            />
+            <span>RWF</span>
+          </div>
+          <span className={'hint' + (tooSmall || tooBig ? ' bad' : '')}>
+            {tooBig ? `This bike needs ${rwf(left)} more at most` : tooSmall ? `The minimum is ${rwf(MIN_PLEDGE)}` : n >= MIN_PLEDGE ? `Projected back: up to ${rwf(total)} over ${campaign.lease_months} months` : `Minimum ${rwf(MIN_PLEDGE)}`}
+          </span>
+        </fieldset>
+
+        <fieldset>
+          <legend>2. Send it with Mobile Money</legend>
+          <p className="muted small">Send exactly <strong>{rwf(n)}</strong> from your MTN MoMo or Airtel Money account. Keep the confirmation SMS.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>3. Paste the transaction ID</legend>
+          <input required value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. MP2611041298" autoComplete="off" spellCheck="false" aria-label="Mobile Money transaction ID" />
+          <span className="hint">You will find it in the SMS. We match it before the pledge counts.</span>
+        </fieldset>
+
+        {err && <div className="err" role="alert"><Icon n="alert" size={16} /> {err}</div>}
+
+        <div className="form-actions">
+          <button className="btn lg" disabled={busy || tooSmall || tooBig}>{busy ? 'Sending pledge...' : 'Send pledge'}</button>
+          <button type="button" className="btn ghost lg" onClick={onClose}>Cancel</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+export function CampaignCard({ c, action }) {
+  const pctDone = pctOf(c.raised, c.target);
+  const left = Math.max(0, c.target - c.raised);
+  const funded = c.status === 'funded' || left === 0;
+  return (
+    <Item as="article" className="moto">
+      <div className="moto-img">
+        {c.photo_url
+          ? <img src={c.photo_url} alt={c.model} loading="lazy" className={/\.png$/i.test(c.photo_url) ? 'cutout' : undefined} />
+          : <div className="moto-noimg"><Icon n="scooter" size={36} /></div>}
+        <Pill s={funded ? 'funded' : 'open'} />
+      </div>
+      <div className="moto-body">
+        <div className="moto-top">
+          <h3>{c.model}</h3>
+          <span className="moto-meta">{c.lease_months} mo lease</span>
+        </div>
+        <div className="moto-raised">
+          <strong className="tnum">{fmt(c.raised)}</strong>
+          <span className="tnum">of {fmt(c.target)} RWF</span>
+        </div>
+        <Progress value={pctDone} tone={funded ? 'done' : undefined} />
+        <div className="moto-figures">
+          <span>{funded ? 'Target reached' : `${rwf(left)} to go`}</span>
+          <span>{c.backers || 0} {c.backers === 1 ? 'backer' : 'backers'}</span>
+        </div>
+        {action(funded)}
+      </div>
+    </Item>
+  );
+}
+
+export default function Campaigns({ profile, notify, onSignIn, onPledged, limit }) {
+  const [items, setItems] = useState(null);
+  const [failed, setFailed] = useState(false);
+  const [pick, setPick] = useState(null);
+
+  const load = () => api('/campaigns').then((d) => { setItems(d); setFailed(false); }).catch(() => { setItems([]); setFailed(true); });
+  useEffect(() => { load(); }, []);
+
   if (!items) return <Skeletons n={3} />;
-  if (!items.length) return <Empty icon="bolt" text="No e-motos are open for funding right now." />;
+  if (failed) return <Empty icon="alert" title="Could not load e-motos" text="Check your connection and try again." action={<button className="btn secondary" onClick={load}>Try again</button>} />;
+  if (!items.length) return <Empty icon="scooter" title="No e-motos open right now" text="New bikes appear here as soon as they are listed." />;
 
   const isInvestor = profile?.role === 'investor';
+  const shown = limit ? items.slice(0, limit) : items;
 
   return (
     <>
       <Stagger className="moto-grid">
-        {(limit ? items.slice(0, limit) : items).map((c) => {
-          const pct = Math.min(100, Math.round((c.raised / c.target) * 100));
-          const left = Math.max(0, c.target - c.raised);
-          const funded = c.status === 'funded' || left === 0;
-
-          return (
-            <Item as="article" className="moto" key={c.id} whileHover={{ y: -4 }} transition={{ type: 'spring', stiffness: 300, damping: 24 }}>
-              <div className="moto-img">
-                {c.photo_url
-                  ? <img src={c.photo_url} alt={c.model} loading="lazy" className={/\.png$/i.test(c.photo_url) ? 'cutout' : undefined} />
-                  : <div style={{ display: 'grid', placeItems: 'center', height: '100%', color: 'var(--text-3)' }}><Icon n="bolt" size={36} /></div>}
-                <Pill s={funded ? 'funded' : 'open'} />
-              </div>
-
-              <div className="moto-body">
-                <div className="moto-top">
-                  <h4>{c.model}</h4>
-                  <span className="moto-meta">{c.lease_months} mo lease</span>
-                </div>
-
-                <div className={'bar' + (funded ? ' full' : '')} role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100" aria-label={`${pct}% funded`}>
-                  <motion.i initial={{ width: 0 }} whileInView={{ width: pct + '%' }} viewport={{ once: true }} transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.2 }} />
-                </div>
-
-                <div className="moto-figures">
-                  <span><strong>{rwf(c.raised)}</strong> raised</span>
-                  <span>{pct}% · {c.backers || 0} {c.backers === 1 ? 'backer' : 'backers'}</span>
-                </div>
-                <div className="tiny">{funded ? `Goal of ${rwf(c.target)} reached` : `${rwf(left)} to go`}</div>
-
-                {funded ? (
-                  <button className="btn secondary block" disabled>Fully funded</button>
-                ) : !profile ? (
-                  <button className="btn block" onClick={onSignIn}>Sign in to invest</button>
-                ) : isInvestor ? (
-                  <button className="btn block" onClick={() => open(c)}>Invest</button>
-                ) : null}
-              </div>
-            </Item>
-          );
-        })}
+        {shown.map((c) => (
+          <CampaignCard
+            key={c.id} c={c}
+            action={(funded) => (funded
+              ? <div className="moto-done"><Icon n="checkCircle" size={16} /> Fully funded</div>
+              : !profile
+                ? <button className="btn block" onClick={onSignIn}>Sign in to invest</button>
+                : isInvestor
+                  ? <button className="btn block" onClick={() => setPick(c)}>Invest in this e-moto</button>
+                  : null)}
+          />
+        ))}
       </Stagger>
 
       {pick && (
-        <Modal title="Invest in this e-moto" onClose={() => setPick(null)}>
-          <div className="modal-sum">
-            {pick.photo_url && <img src={pick.photo_url} alt="" />}
-            <div>
-              <strong>{pick.model}</strong>
-              <div className="tiny">{rwf(Math.max(0, pick.target - pick.raised))} still needed</div>
-            </div>
-          </div>
-
-          <form onSubmit={pledge}>
-            <label>
-              Amount (RWF)
-              <div className="chips">
-                {PRESETS.filter((a) => a <= pick.target - pick.raised).map((a) => (
-                  <button key={a} type="button" className={'chip' + (Number(f.amount) === a ? ' on' : '')} onClick={() => setF({ ...f, amount: String(a) })}>
-                    {fmt(a)}
-                  </button>
-                ))}
-              </div>
-              <input required type="number" min="10000" max={pick.target - pick.raised} step="1000" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
-              <span className="hint">Minimum 10,000 RWF</span>
-            </label>
-
-            <ol className="modal-steps">
-              <li>Send this amount with Mobile Money.</li>
-              <li>Paste the transaction ID from your SMS below.</li>
-            </ol>
-
-            <label>
-              Mobile Money transaction ID
-              <input required value={f.momo_ref} onChange={(e) => setF({ ...f, momo_ref: e.target.value })} placeholder="e.g. 1234567890" />
-            </label>
-
-            {err && <div className="err" role="alert">{err}</div>}
-
-            <div className="form-actions">
-              <button className="btn" disabled={busy}>{busy ? 'Sending...' : 'Confirm pledge'}</button>
-              <button type="button" className="btn ghost" onClick={() => setPick(null)}>Cancel</button>
-            </div>
-          </form>
-        </Modal>
+        <PledgeDialog
+          campaign={pick} onClose={() => setPick(null)}
+          onDone={() => { setPick(null); notify('Pledge sent. It counts once we confirm the payment.'); load(); onPledged?.(); }}
+        />
       )}
     </>
   );
