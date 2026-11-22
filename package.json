@@ -10,7 +10,7 @@
     "build": "npm --prefix frontend install && npm --prefix frontend run build",
     "admin:create": "node --env-file=.env scripts/create-admin.mjs",
     "seed:demo": "node --env-file=.env scripts/seed-demo.mjs",
-    "test": "node --test \"backend/test/**/*.test.js\""
+    "test": "node --test backend/test/*.test.js"
   },
   "engines": {
     "node": ">=20"
